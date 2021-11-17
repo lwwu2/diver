@@ -6,7 +6,7 @@ from tqdm import tqdm
 from pathlib import Path
 from argparse import ArgumentParser
 
-from model.config import default_options
+from configs.config import default_options
 from model.diver import DIVeR
 
 from utils.dataset import BlenderDataset, TanksDataset

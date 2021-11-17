@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 
 import time
 
-from model.config import default_options
+from configs.config import default_options
 
 from utils.dataset import BlenderDataset
 from utils.ray_march import aabb_intersect,ray_march

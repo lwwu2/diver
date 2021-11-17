@@ -12,7 +12,7 @@ default_options = {
     'dataset': {
         'type': str,
         'nargs': 2,
-        'default': ['blender','../datas/blender/lego']
+        'default': ['blender','path_to_scene']
     },
     'num_workers': {
         'type': int,
