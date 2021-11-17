@@ -5,10 +5,9 @@
 #include "cuda_utils.h"
 #include "cutil_math.h"
 
-#define NUM_THREADS 384
+
 #define NUM_BLOCKS 1024
 #define MAX_HIT 8
-
 #define PARAM_SIZE 8288
 
 
@@ -17,20 +16,23 @@ __device__ __forceinline__ float sigmoid (float x)
     return 1.0 / (1.0 + __expf (-x));
 }
 
+static texture <int, 3, cudaReadModeElementType> c_voxel_map; // voxel index map
+__device__ __constant__ float params_cache[PARAM_SIZE]; // mlp weights
 
-static texture <int, 3, cudaReadModeElementType> c_voxel_map;
-__device__ __constant__ float params_cache[PARAM_SIZE];
 
 /**
- * diver64 version decoder code. Better commented version is provided in the diver-rt repo
- * we did not apply feature vector pre-multiplication described in the supplementary,
- * because feature loading from the global memory is a bottleneck.
+ * Performs mlp evaluation of single pass
+ * @param batch_size number of pixels to evaluate
+ * @param coord buffer that stores the [entry, exit] location of a voxel intersection
+ * @param voxels 1D array of feature vectors
+ * @param v viewing direction buffer
+ * @param rgba rbga output buffer
+ * @param mask mask of pixels that have finished the evaluation
  */
 __global__ void mlp_eval_kernel(
             int batch_size,
             const float *__restrict__ coord,
             const float *__restrict__ voxels,
-            const int *__restrict__ voxel_map,
             const float *__restrict__ v,
             float *__restrict__ rgba,
             bool* __restrict__ mask
@@ -46,14 +48,14 @@ __global__ void mlp_eval_kernel(
     int batch_index = 800*ty + tx; 
     
     while (batch_index < batch_size) {
-        if (mask[batch_index]) {
+        if (mask[batch_index]) { // check if current pixel need to be evaluated
             b_idx += NUM_BLOCKS;
             tx = ((b_idx%50)*blockDim.x) + threadIdx.x;
             ty = ((b_idx/50)*blockDim.y) + threadIdx.y;
             batch_index = 800*ty + tx;
             continue;
         }
-        for (int hit=0; hit < MAX_HIT; hit++) {
+        for (int hit=0; hit < MAX_HIT; hit++) { // sequantially evaluate all the hits
             int mask_idx = batch_index*6 + hit*batch_size*6;
     
             float x0 = coord[mask_idx];
@@ -62,12 +64,12 @@ __global__ void mlp_eval_kernel(
             float x1 = coord[mask_idx+3];
             float y1 = coord[mask_idx+4];
             float z1 = coord[mask_idx+5];
-            if (x0 < 0) {
+            if (x0 < 0) { // we use x0 = -1 as an inicator of the traversal is over
                 mask[batch_index] = true;
                 break;
             }
     
-            int cx = min(int(x0+1e-4f),int(x1+1e-4f));
+            int cx = min(int(x0+1e-4f),int(x1+1e-4f)); // accurate boxel index calculation
             int cy = min(int(y0+1e-4f),int(y1+1e-4f));
             int cz = min(int(z0+1e-4f),int(z1+1e-4f));
             x0 -= cx;
@@ -76,6 +78,8 @@ __global__ void mlp_eval_kernel(
             y1 -= cy;
             z0 -= cz;
             z1 -= cz;
+
+            // calculate weights for eight vertices
             float z01 = z0 + z1;
             float y01 = y0 + y1;
             float x01 = x0 + x1;
@@ -97,7 +101,6 @@ __global__ void mlp_eval_kernel(
             w[3] = -w[7] +w4;
     
             float buffer1[32];
-            int param_offset = 0;
             // load features
             int v_idx = tex3D(c_voxel_map,cx,cy,cz);
             #pragma unroll
@@ -117,8 +120,9 @@ __global__ void mlp_eval_kernel(
                     buffer1[i] += w[j]*voxels[v_idx*32+i];
                 }
             }
-    
-            // first mlp
+            
+            int param_offset = 0;
+            // first mlp evaluation
             float buffer2[64];
             #pragma unroll
             for (int i=0; i < 64; i++) {
@@ -135,7 +139,7 @@ __global__ void mlp_eval_kernel(
                 }
             }
     
-            // density mlp
+            // density mlp evaluation
             float sigma = params_cache[param_offset];
             param_offset += 1;
             #pragma unroll
@@ -146,11 +150,11 @@ __global__ void mlp_eval_kernel(
             sigma = -fmaxf(sigma,0.0f);
             sigma = 1.0f - __expf(sigma);
             
-            if (sigma < 1e-2f) {
+            if (sigma < 1e-2f) { // if alpha is low, no need to calculate color
                 continue;
             }
     
-            // second mlp
+            // second mlp evaluation
             float buffer3[64];
             #pragma unroll
             for (int i =0; i < 64; i++) {
@@ -165,7 +169,7 @@ __global__ void mlp_eval_kernel(
                     param_offset += 1;
                 }
             }
-            // cat view dependent
+            // cat view dependency
             #pragma unroll
             for (int i = 0; i < 3; i++) {
                 float input_elem = v[batch_index*3+i];
@@ -188,7 +192,7 @@ __global__ void mlp_eval_kernel(
                 }
             }
     
-            // last mlp
+            // last mlp evaluation
             float buffer4[3];
             #pragma unroll
             for (int i=0; i < 3; i++ ) {
@@ -204,6 +208,7 @@ __global__ void mlp_eval_kernel(
                 }
             }
     
+            // update rgba buffer
             float acc_sigma = rgba[batch_index*4+3];
             float new_sigma = acc_sigma*sigma;
             #pragma unroll
@@ -212,7 +217,7 @@ __global__ void mlp_eval_kernel(
             }
             new_sigma = acc_sigma*(1-sigma);
             rgba[batch_index*4+3] = new_sigma;
-            if (new_sigma < 1e-2f) {
+            if (new_sigma < 1e-2f) { //early ray termination criteria checking
                 mask[batch_index] = true;
                 break;
             }
@@ -230,7 +235,6 @@ void mlp_eval_wrapper(
   int batch_size,
   const float* coord,
   const float* voxels,
-  const int* voxel_map,
   const float* v,
   float* rgba,
   bool* mask
@@ -242,7 +246,6 @@ void mlp_eval_wrapper(
       batch_size,
       coord,
       voxels,
-      voxel_map,
       v,
       rgba,mask);
   
@@ -253,14 +256,16 @@ void mlp_eval_wrapper(
 
 
 /**
- * same as the code in diver-rt repo
- */
+* upload mlp weights and voxel index map
+* @param device_id cuda device id
+* @param map_size size of the voxel index map
+* @param voxel_map voxel index map
+*/
 void upload_weight_wrapper(
     int device_id,
-    int chunk_num, int chunk_scale, int chunk_size,
+    int map_size,
     const float* params,
-    const float* voxel_chunk,
-    const int* chunk_map
+    const int* voxel_map
 ) {
     cudaSetDevice(device_id);
 
@@ -269,11 +274,11 @@ void upload_weight_wrapper(
     // allocate map
     cudaChannelFormatDesc cf = cudaCreateChannelDesc<int>();
     cudaArray * voxel_map_array = 0;
-    cudaMalloc3DArray(&voxel_map_array,&cf,make_cudaExtent(chunk_scale,chunk_scale,chunk_scale),0);
+    cudaMalloc3DArray(&voxel_map_array,&cf,make_cudaExtent(map_size,map_size,map_size),0);
     cudaMemcpy3DParms copyParams = {0};
-    copyParams.srcPtr = make_cudaPitchedPtr((void*)chunk_map,chunk_scale*sizeof(int),chunk_scale,chunk_scale);
+    copyParams.srcPtr = make_cudaPitchedPtr((void*)voxel_map,map_size*sizeof(int),map_size,map_size);
     copyParams.dstArray = voxel_map_array;
-    copyParams.extent = make_cudaExtent(chunk_scale,chunk_scale,chunk_scale);
+    copyParams.extent = make_cudaExtent(map_size,map_size,map_size);
     copyParams.kind = cudaMemcpyHostToDevice;
     cudaMemcpy3D(&copyParams);
     

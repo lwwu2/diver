@@ -67,10 +67,10 @@ if __name__ == '__main__':
     voxel_masks = voxel_masks.to(device).contiguous()
 
 
-    chunk_map = torch.zeros([hparams.voxel_num+1]*3,dtype=torch.int)
-    chunk_map[idxs[0],idxs[1],idxs[2]] = torch.arange(len(idxs[0])).int()
-    voxel_chunk = features.to(device).contiguous()
-    chunk_map = chunk_map.to(device).contiguous()
+    voxel_map = torch.zeros([hparams.voxel_num+1]*3,dtype=torch.int)
+    voxel_map[idxs[0],idxs[1],idxs[2]] = torch.arange(len(idxs[0])).int()
+    voxels = features.to(device).contiguous()
+    voxel_map = voxel_map.contiguous()
     
     
     level = 3
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     octrees = torch.cat(octrees,0).contiguous()
     
     params = params.contiguous()
-    upload_weight(device.index,params,voxel_chunk.cpu().contiguous(),chunk_map.cpu().contiguous())
+    upload_weight(device.index,params,voxel_map)
     
     voxel_size = hparams.grid_size/hparams.voxel_num
     xyzmin = -hparams.voxel_num*voxel_size*0.5
@@ -115,7 +115,7 @@ if __name__ == '__main__':
         aabb_intersect(coords,v,center,finish,rgba,octrees,voxel_num)
         while not finish.all():
             ray_march(coords,v,voxel_masks,finish,voxel_num)
-            mlp_eval(rgba, coords, voxel_chunk, chunk_map, v, finish)
+            mlp_eval(rgba, coords, voxels, v, finish)
         total_time = time.time()-start_time
         times.append(total_time)
         

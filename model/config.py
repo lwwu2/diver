@@ -79,7 +79,7 @@ default_options = {
     },
     'voxel_num':{
         'type': int,
-        'default': 128
+        'default': 256
     },
     'voxel_dim':{
         'type': int,

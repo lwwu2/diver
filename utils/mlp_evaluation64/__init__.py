@@ -1,4 +1,5 @@
 from torch.utils.cpp_extension import load
+import torch
 from torch.autograd import Function
 from pathlib import Path
 
@@ -16,28 +17,28 @@ _ext = load(name='mlp_eval_ext',
 
 class MLPEval(Function):
     @staticmethod
-    def forward(ctx, rgba, coord, voxels, voxel_map, v, mask):
+    def forward(ctx, rgba, coord, voxels, v, mask):
         _ext.mlp_eval(
             rgba,
-            coord,voxels,voxel_map,v,mask)
-        return
+            coord,voxels,v,mask)
+        return torch.Tensor([0])
 
     @staticmethod
-    def backward(ctx, a, b, c, d, e, f):
-        return None, None, None, None, None, None
+    def backward(ctx, a, b, c, d, e):
+        return None, None, None, None, None
     
 class UploadWeight(Function):
     @staticmethod
-    def forward(ctx, device_id, params, voxel_chunk, chunk_map):
+    def forward(ctx, device_id, params, voxel_map):
         _ext.upload_weight(
             device_id,
-            params, voxel_chunk, chunk_map)
+            params, voxel_map)
         
-        return
+        return torch.Tensor([0])
 
     @staticmethod
-    def backward(ctx, a, b, c, d):
-        return None, None, None, None
+    def backward(ctx, a, b, c):
+        return None, None, None
     
 mlp_eval = MLPEval.apply
 upload_weight = UploadWeight.apply
