@@ -15,6 +15,8 @@ Edit `configs/config.py` to configure a training and setup dataset path.
 
 To reproduce the results of the paper, replace `config.py` with other configuration files under the same folder.
 
+The 'implicit' training stage takes around 40GB GPU memory and the 'implicit-explicit' stage takes around 20GB GPU memory. Decreasing the voxel grid size by a factor of 2 results in models that require around 10GB GPU memory, which causes acceptable deduction on rendering quality.
+
 ### Training
 
 To train an explicit or implicit model:
