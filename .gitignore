@@ -1,0 +1,9 @@
+/datas/
+**/__pycache__/
+notebooks/*
+**/.ipynb_checkpoints
+/logs/
+/outputs/
+/checkpoints/
+/models/config.py
+*-Copy*
