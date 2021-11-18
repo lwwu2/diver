@@ -1,4 +1,4 @@
-# DIVeR: Deterministic Intergration for Volume Rendering
+# DIVeR: Deterministic Integration for Volume Rendering
 This repo contains the training and evaluation code for DIVeR.
 
 ## Setup
