@@ -3,6 +3,12 @@ This repo contains the training and evaluation code for DIVeR.
 
 ## Setup
 
+- python 3.8
+- pytorch 1.9.0
+- pytorch-lightning 1.2.10
+- torchvision 0.2.2
+- torch-scatter 2.0.8
+
 ### Dataset
 
 - [NeRF-Synthetic](https://github.com/bmild/nerf)
