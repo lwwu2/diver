@@ -1,1 +1,6 @@
+title: DIVeR
+description: Real-time and Accurate Neural Radiance Fields with Deterministic Integration for Volume Rendering
+code_url: https://github.com/lwwu2/diver
+rt_url: https://github.com/lwwu2/diver-rt
+authors: Liwen Wu   Jae Yong Lee   Anand Bhattad   Yuxiong Wang   David Forsyth
 theme: jekyll-theme-cayman
