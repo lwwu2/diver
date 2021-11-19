@@ -15,6 +15,10 @@ This repo contains the training and evaluation code for DIVeR.
 - [Tanks&Temples](https://github.com/facebookresearch/NSVF)
 - [BlendedMVS](https://github.com/facebookresearch/NSVF)
 
+### Pre-trained models
+
+Both our real-time and offline models can be found in [here](https://drive.google.com/drive/folders/1iaQ-PIS7ydpoNj2OToLgAi-3lCyJG4MN?usp=sharing).
+
 ## Usage
 
 Edit `configs/config.py` to configure a training and setup dataset path.
@@ -88,7 +92,7 @@ pyrhon eval_rt.py --checkpoint_path=PATH_TO_SERIALIZED_WEIGHT_FILE
 
 ## Resources
 
-- Project page
+- [Project page](https://lwwu2.github.io/diver/)
 - Paper
 - [Real-time Code](https://github.com/lwwu2/diver-rt)
 
