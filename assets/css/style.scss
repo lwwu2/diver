@@ -66,7 +66,7 @@ $hr-border-color: #eff0f1 !default;
 
 .btn {
   display: inline-block;
-  margin-bottom: 1rem;
+  margin-bottom: 0.01rem;
   color: rgba(0, 0, 0, 0.7);
   background-color: rgba(255, 255, 255, 0.08);
   border-color: rgba(0, 0, 0, 0.2);
@@ -147,6 +147,7 @@ $hr-border-color: #eff0f1 !default;
   }
 
   img {
+     display: block;
      margin-left: auto;
      margin-right: auto;
      width: 50%;
