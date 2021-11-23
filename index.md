@@ -8,3 +8,13 @@ DIVeR builds on the key ideas of NeRF and its variants -- density models and vol
 Coming Soon.
 
 ## Citation
+```
+@misc{wu2021diver,
+      title={DIVeR: Real-time and Accurate Neural Radiance Fields with Deterministic Integration for Volume Rendering}, 
+      author={Liwen Wu and Jae Yong Lee and Anand Bhattad and Yuxiong Wang and David Forsyth},
+      year={2021},
+      eprint={2111.10427},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
