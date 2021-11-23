@@ -3,4 +3,5 @@ description: Real-time and Accurate Neural Radiance Fields with Deterministic In
 authors: Liwen Wu &nbsp;&nbsp; Jae Yong Lee &nbsp;&nbsp; Anand Bhattad &nbsp;&nbsp; Yuxiong Wang &nbsp;&nbsp; David Forsyth
 code_url: https://github.com/lwwu2/diver
 rt_url: https://github.com/lwwu2/diver-rt
+paper_url: https://arxiv.org/abs/2111.10427
 theme: jekyll-theme-cayman
