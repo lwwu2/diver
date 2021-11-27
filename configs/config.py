@@ -3,42 +3,42 @@ default_options = {
     'im_shape':{
         'type': int,
         'nargs': 2,
-        'default': [800,800]
+        'default': [image_height,image_width]
     },
     'batch_size':{
         'type': int,
-        'default': 1024*8
+        'default': batch_size
     },
     'dataset': {
         'type': str,
         'nargs': 2,
-        'default': ['blender','../datas/blender/drums']
+        'default': [{'blender', 'tanks'}, '{DATASET_PATH}/{SCENE}']
     },
     'num_workers': {
         'type': int,
-        'default': 6
+        'default': dataloader_worker_thread_num
     },
 
 
     # coarse to fine config
     'fine':{
         'type': int,
-        'default': 1
+        'default': {0,1} # 0 for coarse stage 1 for fine stage
     },
     'coarse_path':{
         'type': str,
-        'default': 'checkpoints/drums_coarse'
+        'default': '{CHECKPOINT_FOLDER}'
     },
     'mask_scale':{
         'type': float,
-        'default': 0.5
+        'default': releative_scale_to_voxel_grid
     },
     
     
     # training strategy config
     'implicit':{
         'type': bool,
-        'default': True
+        'default': whehter_to_use_implicit_model
     },
     'thresh_a':{
         'type': float,
@@ -54,7 +54,7 @@ default_options = {
     },
     'learning_rate': {
         'type': float,
-        'default': 5e-4
+        'default': learning_rate
     },
     'weight_decay': {
         'type': float,
@@ -79,7 +79,7 @@ default_options = {
     },
     'voxel_num':{
         'type': int,
-        'default': 128
+        'default': number_of_voxels_along_each_axis
     },
     'voxel_dim':{
         'type': int,
@@ -118,12 +118,12 @@ default_options = {
     'mlp_point': {
         'type': int,
         'nargs': 3,
-        'default': [32,2,33]
+        'default': [hidden_dimension,network_depth,output_dimension]
     },
     'mlp_view': {
         'type': int,
         'nargs': 2,
-        'default': [32,1]
+        'default': [hidden_dimension,network_depth]
     },
     'dir_encode':{
         'type': int,
@@ -134,6 +134,6 @@ default_options = {
     # rendering config
     'white_back': {
         'type': bool,
-        'default': True
+        'default': True # if background color is white.
     }
 }
