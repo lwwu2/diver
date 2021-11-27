@@ -68,7 +68,7 @@ default_options = {
     'milestones':{
         'type': int,
         'nargs': '*',
-        'default': [200,400]
+        'default': [1000] # never used
     },
     
     

@@ -39,9 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('--pad' , type=int, default=0) # whether to padd the boundary
     parser.add_argument('--device', type=int, required=False,default=None)
     parser.add_argument('--batch', type=int, default=4000)
-    parser.add_argument('--coarse_size', type=int, nargs=2, default=[200,200]) # coarse image size
-    parser.add_argument('--fine_size', type=int, nargs=2, default=[800,800]) # fine image size
-    parser.add_argument('--fine_ray', type=int, default=1) # whether bias sampling fine rays
+    parser.add_argument('--bias_sampling', type=int, default=0) # whether bias sampling the fine_rays
 
     parser.set_defaults(resume=False)
     args = parser.parse_args()
@@ -73,18 +71,18 @@ if __name__ == '__main__':
     batch_size = args.batch
     if dataset_name == 'blender':
         dataset_fn = BlenderDataset
-        dataset = dataset_fn(dataset_path,img_wh=args.coarse_size[::-1], split='train')
+        dataset = dataset_fn(dataset_path,img_wh=hparams.im_shape[::-1], split='train')
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     elif dataset_name == 'tanks':
         dataset_fn = TanksDataset
-        dataset = dataset_fn(dataset_path,img_wh=args.coarse_size[::-1], split='extra')
+        dataset = dataset_fn(dataset_path,img_wh=hparams.im_shape[::-1], split='extra')
         dataloader = dataset
     
 
 
     alpha_map_path = checkpoint_path / 'alpha_map.pt'
 
-    if not alpha_map_path.exists():
+    if True: #not alpha_map_path.exists():
         # extracting alpha map
         print('extracting alpha map')
         alpha_map = torch.zeros((model.voxel_num)**3,device=device)
@@ -137,13 +135,15 @@ if __name__ == '__main__':
         alpha_map = alpha_map.reshape(model.voxel_num,model.voxel_num, model.voxel_num)
         torch.save(alpha_map.cpu(), alpha_map_path) # save in the model weight folder
     else:
+        print('find existing alpha map')
+        print('make sure it is the correctly baked one!')
         alpha_map = torch.load(alpha_map_path, map_location='cpu')
 
         
     voxel_mask = alpha_map.to(device) > args.thresh
     print('{} sapce preserved'.format(voxel_mask.float().mean().item()))
 
-    if args.fine_ray==0: # exit if not bias sampling
+    if args.bias_sampling==0: # exit if not bias sampling
         exit(0)
     
           
@@ -152,10 +152,11 @@ if __name__ == '__main__':
     fine_rgbs = []
     
     batch_size *= 10
-    # bias sampling the rays 
+    # bias sampling the fine rays 
     if dataset_name == 'blender': # for nerf-synthetic, we directly store the sampled rays as .npz file in the weight folder
         dataset_fn = BlenderDataset
-        dataset = dataset_fn(dataset_path,img_wh=args.fine_size, split='train')
+        fine_size = [800,800]
+        dataset = dataset_fn(dataset_path,img_wh=fine_size[::-1], split='train')
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     
         for batch in tqdm(dataloader):
@@ -181,8 +182,13 @@ if __name__ == '__main__':
         np.savez(fine_path, rays=fine_rays, rgbs=fine_rgbs)
     
     elif dataset_name == 'tanks': # for tnt, blendedmvs, we store the pixel(ray) mask
+        if 'BlendedMVS' in dataset_path:
+            fine_size = [576,768]
+        elif 'TanksAndTemple' in dataset_path:
+            fine_size = [1080,1920]
+        
         dataset_fn = TanksDataset
-        dataset = dataset_fn(dataset_path,img_wh=args.fine_size[::-1], split='extra')
+        dataset = dataset_fn(dataset_path,img_wh=fine_size[::-1], split='extra')
         dataloader = dataset
         
         mask_path = checkpoint_path / 'masks'
@@ -205,6 +211,6 @@ if __name__ == '__main__':
                 mask = mask.any(1)
                 masks.append(mask.cpu())
             
-            masks = torch.cat(masks,-1).reshape(args.fine_size).float()
+            masks = torch.cat(masks,-1).reshape(fine_size).float()
             save_image(masks, mask_path/'mask_{}.png'.format(idx)) # save in the mask folder inside model weight folder
             idx += 1

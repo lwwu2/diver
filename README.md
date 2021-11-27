@@ -21,54 +21,66 @@ Both our real-time and offline models can be found in [here](https://drive.googl
 
 ## Usage
 
-Edit `configs/config.py` to configure a training and setup dataset path.
+Edit `configs/config.py` to configure a training.
 
-To reproduce the results of the paper, replace `config.py` with other configuration files under the same folder.
+### Training the coarse model
 
-The 'implicit' training stage takes around 40GB GPU memory and the 'implicit-explicit' stage takes around 20GB GPU memory. Decreasing the voxel grid size by a factor of 2 results in models that require around 10GB GPU memory, which causes acceptable deduction on rendering quality.
-
-### Training
-
-To train an explicit or implicit model:
+The coarse model is firstly trained on an explicit voxel grid and image resolution at 1/4 of the fine model scale with only a few epochs (5 in our experiment) to get the rough geometry (occupancy map):
 
 ```shell
-python train.py --experiment_name=EXPERIMENT_NAME \
-				--device=GPU_DEVICE\
-				--resume=True # if want to resume a training
+python train.py --experiment_name=EXPERIMENT_NAME_COARSE \
+                --device=GPU_DEVICE\
+                --max_epochs=NUM_OF_EPOCHS
 ```
 
-After training an implicit model, the explicit model can be trained:
-
-```sh
-python train.py --experiment_name=EXPERIMENT_NAME \
-				--ft=CHECKPOINT_PATH_TO_IMPLICIT_MODEL_CHECKPOINT\
-				--device=GPU_DEVICE\
-				--resume=True
-```
-
-### Post processing
-
-After the coarse model training and the fine 'implicit-explicit' model training, we perform voxel culling:
+After the coarse model is trained, corresponding occupancy map is extracted and training rays are bias sampled to speed up the training of the fine model: 
 
 ```shell
-python prune.py --checkpoint_path=PATH_TO_MODEL_CHECKPOINT_FOLDER\
-				--coarse_size=COARSE_IMAGE_SIZE\
-				--fine_size=FINE_IMAGE_SIZE\
-				--fine_ray=1 # to get rays that pass through non-empty space, 0 otherwise\
+python prune.py --checkpoint_path=PATH_TO_COARSE_MODEL_CHECKPOINT_FOLDER\
+				--batch=BATCH_SIZE\
+				--bias_sampling=1\ # 1 if bias sampling the training rays, 0 otherwise
+				--device=GPU_DEVICE
+```
+
+The max-scattered 3D alpha map is stored under model checkpoint folder as `alpha_map.pt`.  The rays that pass through non-empty space are also stored under model checkpoint folder. For NeRF-synthetic dataset, we directly store the rays in `fine_rays.npz`; for Tanks&Temples and BlendedMVS, we store the mask for each pixel under folder `masks` which indicates the pixels (rays) to be sampled.
+
+### Training the fine model
+
+Given the coarse occupancy map and the bias sampled rays, an implicit fine model is trained to get rid of the overfitting:
+
+```shell
+python train.py --experiment_name=EXPERIMENT_NAME_IMPLICIT\
+				--device=GPU_DEVICE
+```
+
+After the training curve is almost converged, the fine model is then trained at the 'implicit-explicit' stage:
+
+```shell
+python train.py --experiment_name=EXPERIMENT_NAME\
+				--ft=CHECKPOINT_PATH_TO_IMPLICIT_MODEL\
+				--device=GPU_DEVICE
+```
+
+Finally, The fine occupancy map is extracted:
+
+```shell
+python prune.py --checkpoint_path=PATH_TO_FINE_MODEL_CHECKPOINT_FOLDER\
 				--batch=BATCH_SIZE\
 				--device=GPU_DEVICE
 ```
 
-which stores the max-scattered 3D alpha map under model checkpoint folder as `alpha_map.pt` .  The rays that pass through non-empty space is also stored under model checkpoint folder. For Nerf-synthetic dataset, we directly store the rays in `fine_rays.npz`; for Tanks&Temples and BlendedMVS, we store the mask for each pixel under folder `masks` which indicates the pixels (rays) to be sampled.
+Note: the 'implicit' training stage takes around 40GB GPU memory and the 'implicit-explicit' stage takes around 20GB GPU memory. Decreasing the voxel grid size by a factor of 2 (changing `voxel_num` and `mask_scale` in `config.py`) results in models that only require around 12GB GPU memory with acceptable deduction on rendering qualities.
 
-To convert the checkpoint file in training to pytorch model weight or serialized weight file for real-time rendering:
+### Conversion
+
+To convert the checkpoint file in the training to pytorch state_dict or serialized weight file for real-time rendering:
 
 ```shell
 python convert.py --checkpoint_path=PATH_TO_MODEL_CHECKPOINT_FILE\
-				  --serialize=1 # if want to build serialized weight, 0 otherwise
+				  --serialize={0,1} # 1 if want to build serialized weight, 0 otherwise
 ```
 
-The converted files will be stored under the same folder as the checkpoint file, where the pytorch model weight file is named as `weight.pth`, and the serialized weight file is named as `serialized.pth`
+The converted files will be stored under the same folder as the checkpoint file, where the pytorch state_dict is named as `weight.pth`, and the serialized weight is named as `serialized.pth`
 
 ### Evaluation
 
@@ -83,11 +95,67 @@ python eval.py --checkpoint_path=PATH_TO_MODEL_CHECKPOINT_FILE\
 
 To extract the real-time rendered images and test the mean FPS on the test sequence:
 
-```sh
-pyrhon eval_rt.py --checkpoint_path=PATH_TO_SERIALIZED_WEIGHT_FILE
+```shell
+pyrhon eval_rt.py --checkpoint_path=PATH_TO_SERIALIZED_WEIGHT_FILE\
 				  --output_path=PATH_TO_OUPUT_IMAGES_FOLDER\
 				  --decoder={32,64} # diver32, diver64\ 
 				  --device=GPU_DEVICE
+```
+
+### Reproduction
+
+To reproduce the results of the paper, replace `config.py` with other configuration files under the same folder and change the `dataset_path` and the `coarse_path` (for fine model training). 
+
+An example on the `drums` scene with `DIVeR32` model:
+1. Replace `config.py` by  `nerf_synthetic_coarse.py`, set up `dataset_path` to `{DATASET_PATH}/drums`, and train the coarse model:
+```shell
+python train.py --experiment_name drums_coarse\ 
+				--device 0\
+				--max_epochs 5
+```
+2. Extract the coarse occupancy map: 
+```shell
+python prune.py --checkpoint_path checkpoints/drums_coarse\
+				--batch 4000\
+				--bias_sampling 1\
+				--device 0
+```
+3. Replace `config.py` by `nerf_synthetic_fine_diver32.py`, set up `dataset_path`, set up `coarse_path` to `checkpoints/drums_coarse`, and train the fine implicit model: 
+```shell
+python train.py --experiment_name drums_im\
+				--device 0
+```
+4. Train the 'implicit-explicit' model: 
+```shell
+python train.py --experiment_name drums\
+				--ft checkpoints/drums_im/{BEST_MODEL}.ckpt\
+				--device 0
+```
+and extract the fine occupancy map:
+```shell
+python prune.py --checkpoint_path checkpoints/drums\
+				--batch 4000\
+				--bias_sampling 0\
+				--device 0
+```
+5. Convert training weight:
+```shell
+python convert.py --checkpoint_path checkpoints/drums/{BEST_MODEL}.ckpt\
+				  --serialize 1
+```
+6. Offline rendering: 
+```shell
+python eval.py --checkpoint_path checkpoints/drums/weight.pth\
+			   --output_path outputs/drums\
+			   --batch 20480\
+			   --device 0
+``` 
+7. Real-time rendering:
+```shell
+python eval_rt.py --checkpoint_path checkpoints/drums/serialize.pth\
+				  --output_path outputs/drums\
+				  --decoder 32\
+				  --device 0
 ```
 
 ## Resources

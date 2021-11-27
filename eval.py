@@ -42,13 +42,14 @@ if __name__ == '__main__':
     checkpoint_path = Path(args.checkpoint_path)
     # load model
     if args.checkpoint_path[-4:] == '.pth': # model weight file
+        hparams.mask_scale = 1 # assume the occupancy mask is at fine scale
         weight = torch.load(checkpoint_path,map_location='cpu')
         weight['voxels'] = weight['voxels'].to_dense()
         model = DIVeR(hparams)
         with torch.no_grad():
             model.init_voxels(False)
 
-        model.load_state_dict(weight,strict=True)
+        model.load_state_dict(weight,strict=False)
     else: # model checkpoint point file
         state_dict = torch.load(checkpoint_path, map_location='cpu')['state_dict']
         weight = {}

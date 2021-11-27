@@ -12,7 +12,7 @@ default_options = {
     'dataset': {
         'type': str,
         'nargs': 2,
-        'default': ['blender','path_to_scene']
+        'default': ['blender','../datas/blender/drums']
     },
     'num_workers': {
         'type': int,
@@ -27,7 +27,7 @@ default_options = {
     },
     'coarse_path':{
         'type': str,
-        'default': 'checkpoints/lego_coarse'
+        'default': 'checkpoints/drums_coarse'
     },
     'mask_scale':{
         'type': float,
@@ -68,7 +68,7 @@ default_options = {
     'milestones':{
         'type': int,
         'nargs': '*',
-        'default': [200,400]
+        'default': [1000] # never used
     },
     
     
@@ -79,7 +79,7 @@ default_options = {
     },
     'voxel_num':{
         'type': int,
-        'default': 256
+        'default': 128
     },
     'voxel_dim':{
         'type': int,

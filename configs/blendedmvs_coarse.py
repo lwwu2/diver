@@ -68,7 +68,7 @@ default_options = {
     'milestones':{
         'type': int,
         'nargs': '*',
-        'default': [200,400]
+        'default': [1000] # never used
     },
     
     
@@ -134,6 +134,6 @@ default_options = {
     # rendering config
     'white_back': {
         'type': bool,
-        'default': True
+        'default': True # True for char and statues, False for jade and fountain
     }
 }
