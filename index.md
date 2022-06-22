@@ -8,7 +8,7 @@ DIVeR builds on the key ideas of NeRF and its variants -- density models and vol
 
 |Ship|Lego|Drums|
 |----|----|----|
-|<img src="https://user-images.githubusercontent.com/93700419/175054047-4228ff06-8303-4267-9bba-e6a767763c5b.gif" width="256">|<img src="https://user-images.githubusercontent.com/93700419/175054062-28986580-28ef-4244-8e68-733e49bce249.gif" width="256">|<img src="https://user-images.githubusercontent.com/93700419/175054430-e904782a-270e-4e6f-8fee-2c8675b61c39.gif" width="256">|
+|<img src="https://user-images.githubusercontent.com/93700419/175054047-4228ff06-8303-4267-9bba-e6a767763c5b.gif" width="512">|<img src="https://user-images.githubusercontent.com/93700419/175054062-28986580-28ef-4244-8e68-733e49bce249.gif" width="512">|<img src="https://user-images.githubusercontent.com/93700419/175054430-e904782a-270e-4e6f-8fee-2c8675b61c39.gif" width="512">|
 
 ## Citation
 ```
